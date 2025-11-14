@@ -144,10 +144,33 @@ export class BIPublisherService {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-      const response = await this.axiosInstance.post(
-        '/xmlpserver/services/v2/CatalogService',
-        soapEnvelope
-      );
+      const catalogUrl = `${this.connection.url}:443/xmlpserver/services/v2/CatalogService`;
+      console.log('=== Create Folder Request ===');
+      console.log('URL:', catalogUrl);
+      console.log('Folder Path:', folderPath);
+
+      // Make request via Electron main process to bypass CORS
+      const response = await window.electronAPI.soapRequest({
+        url: catalogUrl,
+        data: soapEnvelope,
+        headers: {
+          'Content-Type': 'text/xml;charset=UTF-8',
+          SOAPAction: '',
+        },
+        auth: this.connection.useSSO
+          ? undefined
+          : {
+              username: this.connection.username,
+              password: this.connection.password,
+            },
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'SOAP request failed');
+      }
+
+      console.log('=== Create Folder Response ===');
+      console.log('Status:', response.status);
 
       const result = this.parser.parse(response.data);
       return { success: true, data: result };
@@ -155,7 +178,7 @@ export class BIPublisherService {
       console.error('Error creating folder:', error);
       return {
         success: false,
-        error: error.response?.data || error.message,
+        error: error.message,
       };
     }
   }
@@ -177,10 +200,33 @@ export class BIPublisherService {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-      const response = await this.axiosInstance.post(
-        '/xmlpserver/services/v2/CatalogService',
-        soapEnvelope
-      );
+      const catalogUrl = `${this.connection.url}:443/xmlpserver/services/v2/CatalogService`;
+      console.log('=== Catalog Service Request ===');
+      console.log('URL:', catalogUrl);
+      console.log('Folder Path:', folderPath);
+
+      // Make request via Electron main process to bypass CORS
+      const response = await window.electronAPI.soapRequest({
+        url: catalogUrl,
+        data: soapEnvelope,
+        headers: {
+          'Content-Type': 'text/xml;charset=UTF-8',
+          SOAPAction: '',
+        },
+        auth: this.connection.useSSO
+          ? undefined
+          : {
+              username: this.connection.username,
+              password: this.connection.password,
+            },
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'SOAP request failed');
+      }
+
+      console.log('=== Catalog Service Response ===');
+      console.log('Status:', response.status);
 
       const result = this.parser.parse(response.data);
       return { success: true, data: result };
@@ -188,7 +234,7 @@ export class BIPublisherService {
       console.error('Error getting catalog items:', error);
       return {
         success: false,
-        error: error.response?.data || error.message,
+        error: error.message,
       };
     }
   }
@@ -216,10 +262,33 @@ export class BIPublisherService {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-      const response = await this.axiosInstance.post(
-        '/xmlpserver/services/ExternalReportWSSService',
-        soapEnvelope
-      );
+      const reportUrl = `${this.connection.url}:443/xmlpserver/services/ExternalReportWSSService`;
+      console.log('=== Execute Query Request ===');
+      console.log('URL:', reportUrl);
+      console.log('Data Model Path:', dataModelPath);
+
+      // Make request via Electron main process to bypass CORS
+      const response = await window.electronAPI.soapRequest({
+        url: reportUrl,
+        data: soapEnvelope,
+        headers: {
+          'Content-Type': 'text/xml;charset=UTF-8',
+          SOAPAction: '',
+        },
+        auth: this.connection.useSSO
+          ? undefined
+          : {
+              username: this.connection.username,
+              password: this.connection.password,
+            },
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'SOAP request failed');
+      }
+
+      console.log('=== Execute Query Response ===');
+      console.log('Status:', response.status);
 
       const result = this.parser.parse(response.data);
       return { success: true, data: result };
@@ -227,7 +296,7 @@ export class BIPublisherService {
       console.error('Error executing query:', error);
       return {
         success: false,
-        error: error.response?.data || error.message,
+        error: error.message,
       };
     }
   }
