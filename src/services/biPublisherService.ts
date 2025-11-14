@@ -66,22 +66,25 @@ export class BIPublisherService {
       console.log('Payload:', soapEnvelope);
       console.log('=====================================');
 
-      const response = await axios.post(
-        loginUrl,
-        soapEnvelope,
-        {
-          headers: {
-            'Content-Type': 'text/xml;charset=UTF-8',
-            SOAPAction: '',
-          },
-          auth: this.connection.useSSO
-            ? undefined
-            : {
-                username: this.connection.username,
-                password: this.connection.password,
-              },
-        }
-      );
+      // Make request via Electron main process to bypass CORS
+      const response = await window.electronAPI.soapRequest({
+        url: loginUrl,
+        data: soapEnvelope,
+        headers: {
+          'Content-Type': 'text/xml;charset=UTF-8',
+          SOAPAction: '',
+        },
+        auth: this.connection.useSSO
+          ? undefined
+          : {
+              username: this.connection.username,
+              password: this.connection.password,
+            },
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'SOAP request failed');
+      }
 
       // Log the response
       console.log('=== SecurityService Login Response ===');

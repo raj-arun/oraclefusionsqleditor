@@ -9,6 +9,7 @@ export interface ElectronAPI {
   saveSQLFile: (content: string) => Promise<any>;
   openSQLFile: () => Promise<any>;
   exportData: (data: any[], format: string, fileName: string) => Promise<any>;
+  soapRequest: (config: any) => Promise<any>;
 }
 
 declare global {

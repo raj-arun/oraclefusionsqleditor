@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import Store from 'electron-store';
 import crypto from 'crypto';
+import axios from 'axios';
 
 // Initialize secure store
 const store = new Store({
@@ -288,5 +289,48 @@ ipcMain.handle('export-data', async (_event, data: any[], format: string, fileNa
   } catch (error) {
     console.error('Error exporting data:', error);
     return { success: false, error: (error as Error).message };
+  }
+});
+
+// SOAP request handler (bypasses CORS by making request from main process)
+ipcMain.handle('soap-request', async (_event, config: any) => {
+  try {
+    console.log('=== SOAP Request from Main Process ===');
+    console.log('URL:', config.url);
+    console.log('Payload:', config.data);
+    console.log('======================================');
+
+    const response = await axios.post(config.url, config.data, {
+      headers: config.headers || {
+        'Content-Type': 'text/xml;charset=UTF-8',
+        SOAPAction: '',
+      },
+      auth: config.auth,
+    });
+
+    console.log('=== SOAP Response ===');
+    console.log('Status:', response.status);
+    console.log('Data:', response.data);
+    console.log('=====================');
+
+    return {
+      success: true,
+      status: response.status,
+      data: response.data,
+      headers: response.headers,
+    };
+  } catch (error: any) {
+    console.error('=== SOAP Request Error ===');
+    console.error('Error:', error.message);
+    console.error('Response:', error.response?.data);
+    console.error('Status:', error.response?.status);
+    console.error('==========================');
+
+    return {
+      success: false,
+      error: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    };
   }
 });
