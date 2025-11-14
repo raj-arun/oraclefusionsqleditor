@@ -72,6 +72,7 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({ open, onCl
 
   const validateUrl = (url: string): boolean => {
     if (!url.endsWith('oraclecloud.com') && !url.includes('oraclecloud.com/')) {
+      alert('Invalid URL: The URL must end with oraclecloud.com');
       setError('URL must end with oraclecloud.com');
       return false;
     }
@@ -322,6 +323,11 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({ open, onCl
               label="URL"
               value={formData.url}
               onChange={(e) => handleInputChange('url', e.target.value)}
+              onBlur={(e) => {
+                if (e.target.value.trim()) {
+                  validateUrl(e.target.value.trim());
+                }
+              }}
               fullWidth
               sx={{ mb: 2 }}
               placeholder="https://your-instance.oraclecloud.com"

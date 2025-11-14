@@ -58,12 +58,26 @@ export class BIPublisherService {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
+      // Log the request details
+      console.log('=== SecurityService Login Request ===');
+      console.log('URL:', this.connection.url + ':443/xmlpserver/services/v2/SecurityService');
+      console.log('Username:', this.connection.username);
+      console.log('Payload:', soapEnvelope);
+      console.log('=====================================');
+
       const response = await this.axiosInstance.post(
         ':443/xmlpserver/services/v2/SecurityService',
         soapEnvelope
       );
 
+      // Log the response
+      console.log('=== SecurityService Login Response ===');
+      console.log('Status:', response.status);
+      console.log('Response Data:', response.data);
+      console.log('======================================');
+
       const result = this.parser.parse(response.data);
+      console.log('Parsed Result:', JSON.stringify(result, null, 2));
 
       // Extract session ID from response
       const loginReturn = result?.['soapenv:Envelope']?.['soapenv:Body']?.loginResponse?.loginReturn;
@@ -71,12 +85,19 @@ export class BIPublisherService {
       if (loginReturn) {
         this.sessionId = loginReturn;
         this.connection.sessionId = loginReturn;
+        console.log('Session ID obtained:', loginReturn);
         return { success: true, data: { sessionId: loginReturn } };
       } else {
+        console.error('Failed to extract session ID from response');
         return { success: false, error: 'Failed to get session ID from login response' };
       }
     } catch (error: any) {
-      console.error('Error logging in:', error);
+      console.error('=== SecurityService Login Error ===');
+      console.error('Error:', error);
+      console.error('Error Message:', error.message);
+      console.error('Error Response:', error.response?.data);
+      console.error('Error Status:', error.response?.status);
+      console.error('===================================');
       return {
         success: false,
         error: error.response?.data || error.message,
