@@ -59,15 +59,28 @@ export class BIPublisherService {
 </soapenv:Envelope>`;
 
       // Log the request details
+      const loginUrl = `${this.connection.url}:443/xmlpserver/services/v2/SecurityService`;
       console.log('=== SecurityService Login Request ===');
-      console.log('URL:', this.connection.url + ':443/xmlpserver/services/v2/SecurityService');
+      console.log('URL:', loginUrl);
       console.log('Username:', this.connection.username);
       console.log('Payload:', soapEnvelope);
       console.log('=====================================');
 
-      const response = await this.axiosInstance.post(
-        ':443/xmlpserver/services/v2/SecurityService',
-        soapEnvelope
+      const response = await axios.post(
+        loginUrl,
+        soapEnvelope,
+        {
+          headers: {
+            'Content-Type': 'text/xml;charset=UTF-8',
+            SOAPAction: '',
+          },
+          auth: this.connection.useSSO
+            ? undefined
+            : {
+                username: this.connection.username,
+                password: this.connection.password,
+              },
+        }
       );
 
       // Log the response
