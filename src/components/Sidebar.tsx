@@ -15,14 +15,15 @@ import {
 } from '@mui/material';
 import {
   Storage as DatabaseIcon,
-  TableChart as TableIcon,
-  ViewList as ViewIcon,
-  Assessment as DataModelIcon,
-  ExpandMore as ExpandMoreIcon,
-  ChevronRight as ChevronRightIcon,
   Refresh as RefreshIcon,
   Folder as FolderIcon,
+  FolderOpen as FolderOpenIcon,
+  ExpandMore as ExpandMoreIcon,
+  ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
+import TableViewIcon from '@mui/icons-material/TableView';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import InsertChartIcon from '@mui/icons-material/InsertChart';
 import { useAppStore } from '../store/appStore';
 import { DatabaseObject } from '../types';
 import { createBIPublisherService } from '../services/biPublisherService';
@@ -40,6 +41,57 @@ export const Sidebar: React.FC = () => {
     }
   }, [activeConnection]);
 
+  const parseCatalogResponse = (responseData: any): DatabaseObject[] => {
+    try {
+      console.log('Parsing catalog response:', JSON.stringify(responseData, null, 2));
+
+      const envelope = responseData?.['soapenv:Envelope'] || responseData?.Envelope;
+      const body = envelope?.['soapenv:Body'] || envelope?.Body;
+      const response = body?.getFolderContentsInSessionResponse;
+
+      if (!response) {
+        console.log('No getFolderContentsInSessionResponse found');
+        return [];
+      }
+
+      const items = response.item || [];
+      const itemArray = Array.isArray(items) ? items : [items];
+
+      console.log('Found items:', itemArray);
+
+      const dataModels: DatabaseObject[] = [];
+
+      itemArray.forEach((item: any) => {
+        const type = item['@_type'] || item.type;
+        const name = item['@_name'] || item.name;
+        const path = item['@_path'] || item.path;
+
+        console.log('Processing item:', { type, name, path });
+
+        if (type === 'folder') {
+          dataModels.push({
+            name: name,
+            type: 'datamodel',
+            path: path,
+            folder: path,
+            children: [], // Will be loaded on demand
+          });
+        } else if (type === 'dataModel' || type === 'datamodel') {
+          dataModels.push({
+            name: name,
+            type: 'datamodel',
+            path: path,
+          });
+        }
+      });
+
+      return dataModels;
+    } catch (error) {
+      console.error('Error parsing catalog response:', error);
+      return [];
+    }
+  };
+
   const loadDatabaseObjects = async () => {
     if (!activeConnection) return;
 
@@ -47,60 +99,38 @@ export const Sidebar: React.FC = () => {
     try {
       const biService = createBIPublisherService(activeConnection);
 
-      // Load catalog structure
+      // Load root catalog structure
       const result = await biService.getCatalogItems('/');
 
       if (result.success) {
-        // Parse and structure the database objects
-        // This is a simplified version - actual parsing depends on XML structure
-        const mockObjects: DatabaseObject[] = [
+        const dataModels = parseCatalogResponse(result.data);
+
+        const objects: DatabaseObject[] = [
           {
             name: 'Tables',
             type: 'table',
             children: [
-              { name: 'EMPLOYEES', type: 'table' },
-              { name: 'DEPARTMENTS', type: 'table' },
-              { name: 'PROJECTS', type: 'table' },
+              // Tables will be loaded from a different source in the future
             ],
           },
           {
             name: 'Views',
             type: 'view',
             children: [
-              { name: 'EMP_DEPT_VIEW', type: 'view' },
-              { name: 'PROJECT_STATUS_VIEW', type: 'view' },
+              // Views will be loaded from a different source in the future
             ],
           },
           {
             name: 'Data Models',
             type: 'datamodel',
-            children: [
-              {
-                name: 'Custom',
-                type: 'datamodel',
-                folder: '/Custom',
-                children: [
-                  {
-                    name: 'NACFusionConnector',
-                    type: 'datamodel',
-                    folder: '/Custom/NACFusionConnector',
-                    children: [
-                      { name: 'EmployeeDataModel', type: 'datamodel', path: '/Custom/NACFusionConnector/EmployeeDataModel' },
-                      { name: 'FinanceDataModel', type: 'datamodel', path: '/Custom/NACFusionConnector/FinanceDataModel' },
-                    ],
-                  },
-                ],
-              },
-            ],
+            children: dataModels,
           },
         ];
 
-        setDatabaseObjects(mockObjects);
+        setDatabaseObjects(objects);
 
         // Auto-expand the first level
         setExpanded({
-          Tables: true,
-          Views: true,
           'Data Models': true,
         });
       }
@@ -111,44 +141,101 @@ export const Sidebar: React.FC = () => {
     }
   };
 
-  const handleToggle = (name: string) => {
+  const loadFolderContents = async (folderPath: string): Promise<DatabaseObject[]> => {
+    if (!activeConnection) return [];
+
+    try {
+      const biService = createBIPublisherService(activeConnection);
+      const result = await biService.getCatalogItems(folderPath);
+
+      if (result.success) {
+        return parseCatalogResponse(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading folder contents:', error);
+    }
+
+    return [];
+  };
+
+  const handleToggle = async (item: DatabaseObject) => {
+    const isCurrentlyExpanded = expanded[item.name];
+
+    // If expanding a folder and it has no children loaded yet, load them
+    if (!isCurrentlyExpanded && item.folder && (!item.children || item.children.length === 0)) {
+      console.log('Loading folder contents for:', item.folder);
+      const contents = await loadFolderContents(item.folder);
+
+      if (contents.length > 0) {
+        // Update the item's children
+        setDatabaseObjects((prevObjects) => {
+          const updateChildren = (objects: DatabaseObject[]): DatabaseObject[] => {
+            return objects.map((obj) => {
+              if (obj.name === item.name && obj.path === item.path) {
+                return { ...obj, children: contents };
+              }
+              if (obj.children) {
+                return { ...obj, children: updateChildren(obj.children) };
+              }
+              return obj;
+            });
+          };
+          return updateChildren(prevObjects);
+        });
+      }
+    }
+
     setExpanded((prev) => ({
       ...prev,
-      [name]: !prev[name],
+      [item.name]: !prev[item.name],
     }));
   };
 
-  const getIcon = (type: DatabaseObject['type']) => {
+  const getIcon = (type: DatabaseObject['type'], isExpanded?: boolean, isFolder?: boolean) => {
+    if (isFolder) {
+      return isExpanded ? (
+        <FolderOpenIcon fontSize="small" sx={{ color: '#FFB74D' }} />
+      ) : (
+        <FolderIcon fontSize="small" sx={{ color: '#FFA726' }} />
+      );
+    }
+
     switch (type) {
       case 'table':
-        return <TableIcon fontSize="small" />;
+        return <TableViewIcon fontSize="small" sx={{ color: '#42A5F5' }} />;
       case 'view':
-        return <ViewIcon fontSize="small" />;
+        return <ViewListIcon fontSize="small" sx={{ color: '#AB47BC' }} />;
       case 'datamodel':
-        return <DataModelIcon fontSize="small" />;
+        return <InsertChartIcon fontSize="small" sx={{ color: '#66BB6A' }} />;
       default:
-        return <FolderIcon fontSize="small" />;
+        return <FolderIcon fontSize="small" sx={{ color: '#FFA726' }} />;
     }
   };
 
   const renderTreeItem = (item: DatabaseObject, level: number = 0) => {
     const hasChildren = item.children && item.children.length > 0;
+    const isFolder = !!item.folder;
+    const hasChildrenOrIsFolder = hasChildren || isFolder;
     const isExpanded = expanded[item.name] || false;
 
     return (
-      <React.Fragment key={item.name}>
+      <React.Fragment key={`${item.path || item.name}-${level}`}>
         <ListItem disablePadding sx={{ pl: level * 2 }}>
           <ListItemButton
-            onClick={() => hasChildren && handleToggle(item.name)}
+            onClick={() => hasChildrenOrIsFolder && handleToggle(item)}
             sx={{ py: 0.5 }}
           >
-            {hasChildren && (
+            {hasChildrenOrIsFolder && (
               <ListItemIcon sx={{ minWidth: 32 }}>
-                {isExpanded ? <ExpandMoreIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
+                {isExpanded ? (
+                  <ExpandMoreIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                ) : (
+                  <ChevronRightIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                )}
               </ListItemIcon>
             )}
-            <ListItemIcon sx={{ minWidth: 36, ml: hasChildren ? 0 : 4 }}>
-              {getIcon(item.type)}
+            <ListItemIcon sx={{ minWidth: 36, ml: hasChildrenOrIsFolder ? 0 : 4 }}>
+              {getIcon(item.type, isExpanded, isFolder)}
             </ListItemIcon>
             <ListItemText
               primary={item.name}

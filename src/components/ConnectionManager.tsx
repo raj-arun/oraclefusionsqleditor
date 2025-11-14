@@ -10,15 +10,16 @@ import {
   FormControlLabel,
   Checkbox,
   Alert,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
   IconButton,
-  Divider,
   Typography,
   Paper,
   InputAdornment,
+  Card,
+  CardContent,
+  CardActions,
+  Chip,
+  Stack,
+  Grid,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -26,6 +27,10 @@ import {
   Add as AddIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
+  CloudQueue as CloudIcon,
+  Person as PersonIcon,
+  Link as LinkIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import { Connection } from '../types';
@@ -263,43 +268,91 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({ open, onCl
             </Box>
 
             {connections.length === 0 ? (
-              <Paper sx={{ p: 3, textAlign: 'center', bgcolor: 'background.default' }}>
-                <Typography color="text.secondary">No connections yet. Add your first connection to get started.</Typography>
+              <Paper
+                sx={{
+                  p: 4,
+                  textAlign: 'center',
+                  bgcolor: 'background.default',
+                  borderRadius: 2,
+                  border: '2px dashed',
+                  borderColor: 'divider',
+                }}
+              >
+                <CloudIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  No connections yet
+                </Typography>
+                <Typography variant="body2" color="text.disabled">
+                  Add your first Oracle Fusion connection to get started
+                </Typography>
               </Paper>
             ) : (
-              <List>
-                {connections.map((conn, index) => (
-                  <React.Fragment key={conn.id}>
-                    {index > 0 && <Divider />}
-                    <ListItem>
-                      <ListItemText
-                        primary={conn.name}
-                        secondary={`${conn.url} • ${conn.username}`}
-                      />
-                      <ListItemSecondaryAction>
+              <Grid container spacing={2}>
+                {connections.map((conn) => (
+                  <Grid item xs={12} key={conn.id}>
+                    <Card
+                      elevation={2}
+                      sx={{
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          elevation: 4,
+                          transform: 'translateY(-2px)',
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ pb: 1 }}>
+                        <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                          <CloudIcon color="primary" />
+                          <Typography variant="h6" component="div">
+                            {conn.name}
+                          </Typography>
+                          {conn.useSSO && (
+                            <Chip label="SSO" size="small" color="info" />
+                          )}
+                        </Stack>
+                        <Stack spacing={0.5}>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <LinkIcon fontSize="small" color="action" />
+                            <Typography variant="body2" color="text.secondary" noWrap>
+                              {conn.url}
+                            </Typography>
+                          </Stack>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <PersonIcon fontSize="small" color="action" />
+                            <Typography variant="body2" color="text.secondary">
+                              {conn.username}
+                            </Typography>
+                          </Stack>
+                        </Stack>
+                      </CardContent>
+                      <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
                         <Button
                           size="small"
-                          variant="outlined"
+                          variant="contained"
+                          startIcon={<CheckCircleIcon />}
                           onClick={() => handleConnectTo(conn)}
-                          sx={{ mr: 1 }}
                         >
                           Connect
                         </Button>
                         <IconButton
-                          edge="end"
+                          size="small"
                           onClick={() => handleEditConnection(conn)}
-                          sx={{ mr: 1 }}
+                          color="primary"
                         >
-                          <EditIcon />
+                          <EditIcon fontSize="small" />
                         </IconButton>
-                        <IconButton edge="end" onClick={() => handleDeleteConnection(conn.id)}>
-                          <DeleteIcon />
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteConnection(conn.id)}
+                          color="error"
+                        >
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                  </React.Fragment>
+                      </CardActions>
+                    </Card>
+                  </Grid>
                 ))}
-              </List>
+              </Grid>
             )}
           </Box>
         ) : (
@@ -317,6 +370,13 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({ open, onCl
               fullWidth
               sx={{ mb: 2 }}
               required
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <CloudIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <TextField
@@ -333,6 +393,13 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({ open, onCl
               placeholder="https://your-instance.oraclecloud.com"
               required
               helperText="Must end with oraclecloud.com"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LinkIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <FormControlLabel
@@ -355,6 +422,13 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({ open, onCl
                   fullWidth
                   sx={{ mb: 2 }}
                   required
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonIcon color="action" />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
 
                 <TextField
