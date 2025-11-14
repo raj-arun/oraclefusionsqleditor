@@ -188,22 +188,33 @@ export class BIPublisherService {
    */
   async getCatalogItems(folderPath: string = '/'): Promise<SOAPResponse> {
     try {
+      // Ensure we have a session ID
+      if (!this.sessionId) {
+        console.log('No session ID found, logging in first...');
+        const loginResult = await this.login();
+        if (!loginResult.success) {
+          return loginResult;
+        }
+      }
+
       const soapEnvelope = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">
   <soapenv:Header/>
   <soapenv:Body>
-    <v2:catalogOperation>
-      <v2:folderAbsolutePath>${folderPath}</v2:folderAbsolutePath>
-      <v2:operation>list</v2:operation>
-    </v2:catalogOperation>
+    <v2:getFolderContentsInSession>
+      <v2:folderAbsolutePath>${folderPath || '/'}</v2:folderAbsolutePath>
+      <v2:bipSessionToken>${this.sessionId}</v2:bipSessionToken>
+    </v2:getFolderContentsInSession>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
       const catalogUrl = `${this.connection.url}:443/xmlpserver/services/v2/CatalogService`;
-      console.log('=== Catalog Service Request ===');
+      console.log('=== Get Folder Contents Request ===');
       console.log('URL:', catalogUrl);
-      console.log('Folder Path:', folderPath);
+      console.log('Folder Path:', folderPath || '/');
+      console.log('Session Token:', this.sessionId);
+      console.log('Payload:', soapEnvelope);
 
       // Make request via Electron main process to bypass CORS
       const response = await window.electronAPI.soapRequest({
@@ -213,20 +224,16 @@ export class BIPublisherService {
           'Content-Type': 'text/xml;charset=UTF-8',
           SOAPAction: '',
         },
-        auth: this.connection.useSSO
-          ? undefined
-          : {
-              username: this.connection.username,
-              password: this.connection.password,
-            },
+        // No auth needed - using session token instead
       });
 
       if (!response.success) {
         throw new Error(response.error || 'SOAP request failed');
       }
 
-      console.log('=== Catalog Service Response ===');
+      console.log('=== Get Folder Contents Response ===');
       console.log('Status:', response.status);
+      console.log('Response Data:', response.data);
 
       const result = this.parser.parse(response.data);
       return { success: true, data: result };
