@@ -7,9 +7,11 @@ export class BIPublisherService {
   private parser: XMLParser;
   private builder: XMLBuilder;
   private connection: Connection;
+  private sessionId: string | null = null;
 
   constructor(connection: Connection) {
     this.connection = connection;
+    this.sessionId = connection.sessionId || null;
 
     this.axiosInstance = axios.create({
       baseURL: connection.url,
@@ -37,6 +39,56 @@ export class BIPublisherService {
       textNodeName: '#text',
       format: true,
     });
+  }
+
+  /**
+   * Login to BI Publisher and get session ID
+   */
+  async login(): Promise<SOAPResponse> {
+    try {
+      const soapEnvelope = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:v2="http://xmlns.oracle.com/oxp/service/v2">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <v2:login>
+      <v2:userID>${this.connection.username}</v2:userID>
+      <v2:password>${this.connection.password}</v2:password>
+    </v2:login>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+
+      const response = await this.axiosInstance.post(
+        ':443/xmlpserver/services/v2/SecurityService',
+        soapEnvelope
+      );
+
+      const result = this.parser.parse(response.data);
+
+      // Extract session ID from response
+      const loginReturn = result?.['soapenv:Envelope']?.['soapenv:Body']?.loginResponse?.loginReturn;
+
+      if (loginReturn) {
+        this.sessionId = loginReturn;
+        this.connection.sessionId = loginReturn;
+        return { success: true, data: { sessionId: loginReturn } };
+      } else {
+        return { success: false, error: 'Failed to get session ID from login response' };
+      }
+    } catch (error: any) {
+      console.error('Error logging in:', error);
+      return {
+        success: false,
+        error: error.response?.data || error.message,
+      };
+    }
+  }
+
+  /**
+   * Get the current session ID
+   */
+  getSessionId(): string | null {
+    return this.sessionId;
   }
 
   /**
@@ -148,7 +200,14 @@ export class BIPublisherService {
    */
   async testConnection(): Promise<SOAPResponse> {
     try {
-      // Try to get root catalog items as a connection test
+      // First login to get session ID
+      const loginResult = await this.login();
+
+      if (!loginResult.success) {
+        return loginResult;
+      }
+
+      // Then try to get root catalog items as a connection test
       const result = await this.getCatalogItems('/');
       return result;
     } catch (error: any) {

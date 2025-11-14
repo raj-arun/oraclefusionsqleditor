@@ -59,16 +59,20 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "public/**/*"
     ],
     "mac": {
+      "icon": "public/icon.png",
       "category": "public.app-category.developer-tools",
       "target": ["dmg", "zip"]
     },
     "win": {
+      "icon": "public/icon.png",
       "target": ["nsis", "portable"]
     },
     "linux": {
+      "icon": "public/icon.png",
       "target": ["AppImage", "deb"],
       "category": "Development"
     }

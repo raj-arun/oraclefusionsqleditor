@@ -18,8 +18,15 @@ import {
   Divider,
   Typography,
   Paper,
+  InputAdornment,
 } from '@mui/material';
-import { Delete as DeleteIcon, Edit as EditIcon, Add as AddIcon } from '@mui/icons-material';
+import {
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  Add as AddIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+} from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
 import { Connection } from '../types';
 import { createBIPublisherService } from '../services/biPublisherService';
@@ -43,6 +50,7 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({ open, onCl
   });
   const [error, setError] = useState('');
   const [testing, setTesting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     loadConnections();
@@ -194,9 +202,26 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({ open, onCl
     }
   };
 
-  const handleConnectTo = (connection: Connection) => {
-    setActiveConnection(connection);
-    onClose();
+  const handleConnectTo = async (connection: Connection) => {
+    try {
+      // Login to get session ID
+      const biService = createBIPublisherService(connection);
+      const loginResult = await biService.login();
+
+      if (loginResult.success) {
+        // Update connection with session ID
+        const updatedConnection = {
+          ...connection,
+          sessionId: loginResult.data.sessionId,
+        };
+        setActiveConnection(updatedConnection);
+        onClose();
+      } else {
+        setError('Failed to login: ' + (loginResult.error || 'Unknown error'));
+      }
+    } catch (err: any) {
+      setError('Failed to login: ' + err.message);
+    }
   };
 
   const handleCloseForm = () => {
@@ -328,13 +353,25 @@ export const ConnectionManager: React.FC<ConnectionManagerProps> = ({ open, onCl
 
                 <TextField
                   label="Password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
                   fullWidth
                   sx={{ mb: 2 }}
                   required={!selectedConnection}
                   helperText={selectedConnection ? 'Leave empty to keep existing password' : ''}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end"
+                        >
+                          {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </>
             )}

@@ -6,6 +6,7 @@ export interface Connection {
   username: string;
   password: string;
   useSSO: boolean;
+  sessionId?: string;
   createdAt: string;
   updatedAt: string;
 }

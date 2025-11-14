@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // File operations
   saveSQLFile: (content: string) => ipcRenderer.invoke('save-sql-file', content),
+  openSQLFile: () => ipcRenderer.invoke('open-sql-file'),
   exportData: (data: any[], format: string, fileName: string) =>
     ipcRenderer.invoke('export-data', data, format, fileName),
 });
@@ -33,6 +34,7 @@ export interface ElectronAPI {
   saveSettings: (settings: any) => Promise<any>;
   getSettings: () => Promise<any>;
   saveSQLFile: (content: string) => Promise<any>;
+  openSQLFile: () => Promise<any>;
   exportData: (data: any[], format: string, fileName: string) => Promise<any>;
 }
 

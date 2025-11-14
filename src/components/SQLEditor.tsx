@@ -4,6 +4,7 @@ import { Box, IconButton, Toolbar, Tooltip, Divider } from '@mui/material';
 import {
   PlayArrow as RunIcon,
   Save as SaveIcon,
+  FolderOpen as OpenIcon,
   History as HistoryIcon,
 } from '@mui/icons-material';
 import { useAppStore } from '../store/appStore';
@@ -113,12 +114,29 @@ export const SQLEditor: React.FC = () => {
     }
   };
 
+  const handleOpenQuery = async () => {
+    try {
+      const result = await window.electronAPI.openSQLFile();
+      if (result.success && !result.canceled && result.content) {
+        setCurrentQuery(result.content);
+      }
+    } catch (error: any) {
+      console.error('Error opening file:', error);
+      alert('Error opening file: ' + error.message);
+    }
+  };
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Toolbar variant="dense" sx={{ minHeight: 48, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
         <Tooltip title="Run Query (Ctrl+Enter)">
           <IconButton color="primary" onClick={handleRunQuery}>
             <RunIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Open SQL File">
+          <IconButton onClick={handleOpenQuery}>
+            <OpenIcon />
           </IconButton>
         </Tooltip>
         <Tooltip title="Save Query">

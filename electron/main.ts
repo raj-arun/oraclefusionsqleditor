@@ -42,6 +42,7 @@ function createWindow() {
     height: 900,
     minWidth: 1024,
     minHeight: 768,
+    icon: path.join(__dirname, '../public/icon.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -225,6 +226,30 @@ ipcMain.handle('save-sql-file', async (_event, content: string) => {
     return { success: false, canceled: true };
   } catch (error) {
     console.error('Error saving SQL file:', error);
+    return { success: false, error: (error as Error).message };
+  }
+});
+
+// File dialog for opening SQL files
+ipcMain.handle('open-sql-file', async () => {
+  try {
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      title: 'Open SQL File',
+      filters: [
+        { name: 'SQL Files', extensions: ['sql'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+      properties: ['openFile'],
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+      const content = await fs.readFile(result.filePaths[0], 'utf-8');
+      return { success: true, content, filePath: result.filePaths[0] };
+    }
+
+    return { success: false, canceled: true };
+  } catch (error) {
+    console.error('Error opening SQL file:', error);
     return { success: false, error: (error as Error).message };
   }
 });
